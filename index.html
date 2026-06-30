@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Email Verifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center h-screen font-sans">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg border border-gray-100">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Bulk Email Verifier</h1>
+        <p class="text-gray-500 mb-6 text-sm">Upload a .csv or .txt file containing email addresses. The system will verify them asynchronously.</p>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
+            <input type="file" id="fileInput" accept=".csv, .txt" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border rounded-md p-2">
+        </div>
+
+        <button id="uploadBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-200">
+            Start Verification
+        </button>
+
+        <div id="statusBox" class="hidden mt-6 p-4 rounded-md bg-blue-50 border border-blue-200">
+            <p id="statusText" class="text-sm text-blue-700 font-medium text-center">Processing... Please wait.</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const statusBox = document.getElementById('statusBox');
+            const statusText = document.getElementById('statusText');
+
+            if (!fileInput.files[0]) {
+                alert("Please select a .csv or .txt file first!");
+                return;
+            }
+
+            // Show processing status
+            statusBox.classList.remove('hidden');
+            statusBox.className = "mt-6 p-4 rounded-md bg-blue-50 border border-blue-200 block";
+            statusText.innerText = "Processing list... this takes a few moments due to SMTP latency.";
+            statusText.className = "text-sm text-blue-700 font-medium text-center animate-pulse";
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/verify', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error("Server rejected the request.");
+
+                // Trigger file download [cite: 42]
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'Verification_Results.csv';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+
+                // Update status to success
+                statusBox.className = "mt-6 p-4 rounded-md bg-green-50 border border-green-200 block";
+                statusText.className = "text-sm text-green-700 font-medium text-center";
+                statusText.innerText = "Verification Complete! Your results file has been downloaded.";
+
+            } catch (error) {
+                console.error(error);
+                statusBox.className = "mt-6 p-4 rounded-md bg-red-50 border border-red-200 block";
+                statusText.className = "text-sm text-red-700 font-medium text-center";
+                statusText.innerText = "An error occurred during verification.";
+            }
+        });
+    </script>
+</body>
+</html>
